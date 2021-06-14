@@ -14,6 +14,7 @@ typedef struct thread_pool
  int numOfRunningTasks;
  int numOfThreads;
  int isRunning;
+ int shouldWaitForTasks;
  OSQueue *tasksQueue;
  pthread_t *threads;
  pthread_mutex_t mutex;
@@ -23,7 +24,7 @@ typedef struct thread_pool
 
 typedef struct {
     void (*function) (void *);
-    void *pointer;
+    void *param;
 }Task;
 
 ThreadPool* tpCreate(int numOfThreads);
