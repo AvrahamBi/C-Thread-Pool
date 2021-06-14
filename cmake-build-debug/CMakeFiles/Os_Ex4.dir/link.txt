@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/Os_Ex4.dir/main.c.o  -o Os_Ex4 
