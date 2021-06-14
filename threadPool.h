@@ -15,6 +15,7 @@ typedef struct thread_pool
  int numOfThreads;
  int isRunning;
  int shouldWaitForTasks;
+ int hasRunningTasks;
  OSQueue *tasksQueue;
  pthread_t *threads;
  pthread_mutex_t mutex;

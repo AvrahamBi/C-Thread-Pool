@@ -1,14 +1,61 @@
+// Avraham Bar Ilan 205937949
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include "threadPool.h"
 
-
-
 void* runTask(void* task) {
+    ThreadPool* threadPool = (ThreadPool*) task;
+    int tempStatus;
+    while(threadPool->hasRunningTasks == 1) {
+        tempStatus = pthread_mutex_lock(&(threadPool->mutex));
+        if (tempStatus != 0) {
+            // todo insert in to a function
+            perror("Error");
+            free(threadPool->threads);
+            free(threadPool);
+            exit(1);
+        } else {
+            tempStatus = osIsQueueEmpty(threadPool->tasksQueue);
+            // if queue is not empty yet
+            if(tempStatus == 0) {
+                Task* task = osDequeue(threadPool->tasksQueue);
+                tempStatus = pthread_mutex_unlock(&(threadPool->mutex);
+                if (tempStatus != 0) {
+                    // todo insert in to a function
+                    perror("Error");
+                    free(threadPool->threads);
+                    free(threadPool);
+                    exit(1);
+                }
+                task->function(task->param);
+                free(task);
 
-
-
+            } else {
+                if(threadPool->isRunning == 0) {
+                    tempStatus = pthread_mutex_unlock(&(threadPool->mutex);
+                    if(tempStatus != 0) {
+                        // todo insert in to a function
+                        perror("Error");
+                        free(threadPool->threads);
+                        free(threadPool);
+                        exit(1);
+                    }
+                    break;
+                }
+                pthread_cond_wait(&(threadPool->cond), &threadPool->mutex);
+                tempStatus = pthread_mutex_unlock((&(threadPool->mutex));
+                if (tempStatus != 0) {
+                    // todo insert in to a function
+                    perror("Error in unlock\n");
+                    free(threadPool->threads);
+                    free(threadPool);
+                    exit(1);
+                }
+            }
+        }
+    }
 }
 
 
@@ -33,6 +80,7 @@ ThreadPool* tpCreate(int numOfThreads){
     threadPool->tasksQueue = queue;
     threadPool->numOfThreads = numOfThreads;
     threadPool->isRunning = 1;
+    threadPool->hasRunningTasks = 1; // todo maybe remove
 
     int initStatus = pthread_mutex_init(&threadPool->mutex, NULL);
     if(initStatus != 0) {
@@ -64,9 +112,10 @@ ThreadPool* tpCreate(int numOfThreads){
     return threadPool;
 }
 
+
 void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
     int status;
-    threadPool->shouldWaitForTasks = shouldWaitForTasks;
+    threadPool->hasRunningTasks = shouldWaitForTasks;
     status = pthread_cond_broadcast(&threadPool->cond);
     if(status != 0) {
         perror("ERROR");
@@ -102,6 +151,7 @@ void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
     free(threadPool);
     return;
 }
+
 
 int tpInsertTask(ThreadPool* threadPool, void (*computeFunc) (void *), void* param){
     int tempStatus;
