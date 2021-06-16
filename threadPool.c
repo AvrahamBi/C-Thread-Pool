@@ -8,7 +8,7 @@
 void* runTask(void* task) {
     ThreadPool* threadPool = (ThreadPool*) task;
     int tempStatus;
-    while(threadPool->hasRunningTasks == 1) {
+    while(threadPool->hasRunningTasks != 0) {
         tempStatus = pthread_mutex_lock(&(threadPool->mutex));
         if (tempStatus != 0) {
             // todo insert in to a function
@@ -20,8 +20,8 @@ void* runTask(void* task) {
             tempStatus = osIsQueueEmpty(threadPool->tasksQueue);
             // if queue is not empty yet
             if(tempStatus == 0) {
-                Task* task = osDequeue(threadPool->tasksQueue);
-                tempStatus = pthread_mutex_unlock(&(threadPool->mutex);
+                Task* currentTask = osDequeue(threadPool->tasksQueue);
+                tempStatus = pthread_mutex_unlock(&(threadPool->mutex));
                 if (tempStatus != 0) {
                     // todo insert in to a function
                     perror("Error");
@@ -29,12 +29,12 @@ void* runTask(void* task) {
                     free(threadPool);
                     exit(1);
                 }
-                task->function(task->param);
-                free(task);
+                currentTask->function(currentTask->param);
+                free(currentTask);
 
             } else {
                 if(threadPool->isRunning == 0) {
-                    tempStatus = pthread_mutex_unlock(&(threadPool->mutex);
+                    tempStatus = pthread_mutex_unlock(&(threadPool->mutex));
                     if(tempStatus != 0) {
                         // todo insert in to a function
                         perror("Error");
@@ -45,7 +45,7 @@ void* runTask(void* task) {
                     break;
                 }
                 pthread_cond_wait(&(threadPool->cond), &threadPool->mutex);
-                tempStatus = pthread_mutex_unlock((&(threadPool->mutex));
+                tempStatus = pthread_mutex_unlock((&(threadPool->mutex)));
                 if (tempStatus != 0) {
                     // todo insert in to a function
                     perror("Error in unlock\n");
@@ -72,7 +72,9 @@ ThreadPool* tpCreate(int numOfThreads){
         return NULL;
     }
     OSQueue *queue = osCreateQueue();
-    pthread_t * threads = (pthread_t *) malloc (numOfThreads * sizeof(pthread_t));
+    threadPool->numOfThreads = numOfThreads;
+    pthread_t * threads = (pthread_t *) calloc (threadPool->numOfThreads, sizeof(pthread_t));
+    //pthread_t * threads = (pthread_t *) malloc (numOfThreads * sizeof(pthread_t));
     // if allocation failed
     if(!threads) {
         free(threads);
@@ -82,7 +84,7 @@ ThreadPool* tpCreate(int numOfThreads){
     // todo insert into a function
     threadPool->threads = threads;
     threadPool->tasksQueue = queue;
-    threadPool->numOfThreads = numOfThreads;
+
     initThreadPool(threadPool);
     /*threadPool->isRunning = 1;
     threadPool->hasRunningTasks = 1; // todo maybe remove*/
@@ -119,6 +121,7 @@ ThreadPool* tpCreate(int numOfThreads){
 
 
 void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
+    threadPool->isRunning = 0;
     int status;
     threadPool->hasRunningTasks = shouldWaitForTasks;
     status = pthread_cond_broadcast(&threadPool->cond);
@@ -142,10 +145,10 @@ void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
     }
     // deQueue all tasks from queue
     int isQueueEmpty = osIsQueueEmpty(threadPool->tasksQueue);
-    while(isQueueEmpty != 0 ) {
-        osDequeue(threadPool->tasksQueue);
-        /*Task *temp = osDequeue(threadPool->tasksQueue);
-        free(temp;*/
+    while(isQueueEmpty == 0) {
+        //osDequeue(threadPool->tasksQueue);
+        Task *temp = osDequeue(threadPool->tasksQueue);
+        free(temp);
         isQueueEmpty = osIsQueueEmpty(threadPool->tasksQueue);
     }
     pthread_mutex_destroy(&(threadPool->mutex));
@@ -184,7 +187,17 @@ int tpInsertTask(ThreadPool* threadPool, void (*computeFunc) (void *), void* par
 
     // todo maybe should do like line 105
     osEnqueue(threadPool->tasksQueue, task);
+    // todo put the two conditions variable together
     tempStatus = pthread_cond_signal(&threadPool->cond);
+    if (tempStatus != 0) {
+        // todo insert into a function
+        free(task);
+        free(threadPool->threads);
+        free(threadPool);
+        perror("Error");
+        exit(1);
+    }
+    tempStatus = pthread_mutex_unlock(&(threadPool->mutex));
     if (tempStatus != 0) {
         // todo insert into a function
         free(task);
