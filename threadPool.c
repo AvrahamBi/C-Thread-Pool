@@ -58,6 +58,10 @@ void* runTask(void* task) {
     }
 }
 
+void initThreadPool(ThreadPool* tp) {
+    tp->isRunning = 1;
+    tp->hasRunningTasks = 1;
+}
 
 ThreadPool* tpCreate(int numOfThreads){
 
@@ -79,8 +83,9 @@ ThreadPool* tpCreate(int numOfThreads){
     threadPool->threads = threads;
     threadPool->tasksQueue = queue;
     threadPool->numOfThreads = numOfThreads;
-    threadPool->isRunning = 1;
-    threadPool->hasRunningTasks = 1; // todo maybe remove
+    initThreadPool(threadPool);
+    /*threadPool->isRunning = 1;
+    threadPool->hasRunningTasks = 1; // todo maybe remove*/
 
     int initStatus = pthread_mutex_init(&threadPool->mutex, NULL);
     if(initStatus != 0) {
