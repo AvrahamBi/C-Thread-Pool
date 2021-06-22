@@ -24,8 +24,8 @@ typedef struct thread_pool
 }ThreadPool;
 
 typedef struct {
-    void (*function) (void *);
     void *param;
+    void (*function) (void *);
 }Task;
 
 ThreadPool* tpCreate(int numOfThreads);
