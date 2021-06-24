@@ -93,7 +93,7 @@ ThreadPool* tpCreate(int numOfThreads){
         perror("ERROR in pthread_cond_init\n");
     }
     int i = 0, j;
-    for(i; i < numOfThreads; i++) {
+    for(; i < numOfThreads; i++) {
         initStatus = pthread_create(&(threadPool->threads[i]), NULL, runTask, (void*)threadPool);
         // if pthread create failed
         if(initStatus != 0) {
@@ -110,6 +110,12 @@ ThreadPool* tpCreate(int numOfThreads){
     return threadPool;
 }
 
+void destroy(ThreadPool* threadPool) {
+    pthread_mutex_destroy(&(threadPool->mutex));
+    pthread_cond_destroy(&(threadPool->cond));
+    osDestroyQueue(threadPool->tasksQueue);
+    freeThreadPool(threadPool);
+}
 
 void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
     threadPool->isRunning = 0;
@@ -124,7 +130,7 @@ void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
         perror("ERROR in pthread_mutex_unlock\n");
     }
     int i = 0;
-    for(i; i < threadPool->numOfThreads; i++){
+    for(; i < threadPool->numOfThreads; i++){
         status = pthread_join(threadPool->threads[i], NULL);
         if (status != 0) {
             sysCallError(threadPool, "Error in pthread_join\n");
@@ -138,10 +144,8 @@ void tpDestroy(ThreadPool* threadPool, int shouldWaitForTasks) {
         free(temp);
         isQueueEmpty = osIsQueueEmpty(threadPool->tasksQueue);
     }
-    pthread_mutex_destroy(&(threadPool->mutex));
-    pthread_cond_destroy(&(threadPool->cond));
-    osDestroyQueue(threadPool->tasksQueue);
-    freeThreadPool(threadPool);
+    // finish destroy process
+    destroy(threadPool);
     return;
 }
 
